@@ -15,6 +15,7 @@ classdef Boid
         target = [0, 0, 0];
         arrived = false;
         removed = false;
+        distTraveled = 0;
     end
     
     methods
@@ -46,6 +47,7 @@ classdef Boid
 
         function obj = makeMove(obj)
             obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
+            obj.distTraveled = obj.distTraveled + obj.speed * obj.timeUnit;
         end
         
         %   Rule 1: Avoid Collisions

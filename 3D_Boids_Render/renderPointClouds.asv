@@ -5,7 +5,7 @@ clc;
 
 display = 0;
 fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
-iterations = 2;
+iterations = 1;
 
 dispatcherPos = [0, 0, 0];
 maxSpeed = 5;
@@ -53,7 +53,7 @@ for iterate = 1 : iterations
     for ptCld = 1 : size(pointClouds, 3)
 
         step = 0;
-        arrivedInfo = zeros(boidsNum,3);
+        arrivedInfo = [];
 
         % clear all arrived information
         arrived = zeros(1,boidsNum);
@@ -68,7 +68,6 @@ for iterate = 1 : iterations
                 end
                 boids(i).target = pointClouds(i,:,ptCld);
                 boids(i).arrived = false;
-                boids(i).distTraveled = 0;
             end
         end
 
@@ -117,7 +116,7 @@ for iterate = 1 : iterations
                     arrived(i) = 1;
 %                     boids(i).arrived = true;
                     arrivedNum = arrivedNum + 1;
-                    arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
+                    arrivedInfo(i) = [step, boids(i).distTraveled];
                 end
 
                 % check if arrived at center of illumination cell
@@ -168,8 +167,6 @@ for iterate = 1 : iterations
             fprintf("Iteration %d, rendering %s, step %d, %d has arrived, total %d collisions, %d are un-expected\n", iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions);
 
         end
-
-        writematrix(arrivedInfo, "arrivedInfo.xlsx", 'Sheet',ptCld + iterate - 1);
     end
 end
 
