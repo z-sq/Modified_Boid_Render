@@ -5,14 +5,14 @@ classdef Boid
     properties
         ID = 0;
         maxSpeed = 0;
-        direction = [0,0];
+        direction = [0, 0, 0];
         speed = 0;
         checkSteps = 0;
-        position = [0,0]
+        position = [0, 0, 0]
         timeUnit = 0;
         dispCellRadius = 0;
         avoidAngel = pi/4;
-        target = [0,0];
+        target = [0, 0, 0];
         arrived = false;
         removed = false;
     end
@@ -56,7 +56,7 @@ classdef Boid
                 positionChoose = [];
 
                % if just 2 Boids colliding
-                positionChoose = [positionChoose; obj.getNeighborPos(collisions(3:4))];
+                positionChoose = [positionChoose; obj.getNeighborPos(collisions(3:5))];
 
                 % keep finding until no more collisions
                 stillColliding = true;
@@ -88,30 +88,26 @@ classdef Boid
                 % if multiple Boids Collides, find the one with minimum ID
                 % to be the leading boid
                 leadingBoidID = min(collisions(:,1));
+                
+                dotOfDirections = dot(boids(leadingBoidID).direction, obj.direction);
+                crossOfDirections = cross(boids(leadingBoidID).direction, obj.direction);
 
-                transitionMaxis1 = [cos(obj.avoidAngel), sin(obj.avoidAngel);-sin(obj.avoidAngel), cos(obj.avoidAngel)];
-                transitionMaxis2 = [cos(2*pi - obj.avoidAngel), sin(2*pi - obj.avoidAngel);-sin(2*pi - obj.avoidAngel), cos(2*pi - obj.avoidAngel)];
-                % for all other boids, rotate their direction to form
-%                 for i = 1 : size(collisions,1)
-%                     collideBoidID = collisions(i,1);
-%                     if collisions(i, 1) == leadingBoidID
-%                         collideBoidID = obj.ID;
-%                     end
-%                     clappingAngle = atan2d(det([boids(leadingBoidID).direction;boids(collideBoidID).direction]),dot(boids(leadingBoidID).direction,boids(collideBoidID).direction));
-%                     if clappingAngle <= 180
-%                         boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis1;
-%                     else
-%                         boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis2;
-%                     end
+                clappingAngle = atan2(norm(crossOfDirections),dotOfDirections);
+
+                newDirection = (((1-(pi/4)/clappingAngle)) * boids(leadingBoidID).direction + ((pi/4)/clappingAngle) *obj.direction)/2;
+
+                obj.direction = newDirection/norm(newDirection);
+
+%                 transitionMaxis1 = [cos(obj.avoidAngel), sin(obj.avoidAngel);-sin(obj.avoidAngel), cos(obj.avoidAngel)];
+%                 transitionMaxis2 = [cos(2*pi - obj.avoidAngel), sin(2*pi - obj.avoidAngel);-sin(2*pi - obj.avoidAngel), cos(2*pi - obj.avoidAngel)];
 % 
+% 
+%                 clappingAngle = atan2d(det([boids(leadingBoidID).direction;obj.direction]),dot(boids(leadingBoidID).direction,obj.direction));
+%                 if clappingAngle <= 180
+%                     obj.direction = boids(leadingBoidID).direction * transitionMaxis1;
+%                 else
+%                     obj.direction = boids(leadingBoidID).direction * transitionMaxis2;
 %                 end
-
-                clappingAngle = atan2d(det([boids(leadingBoidID).direction;obj.direction]),dot(boids(leadingBoidID).direction,obj.direction));
-                if clappingAngle <= 180
-                    obj.direction = boids(leadingBoidID).direction * transitionMaxis1;
-                else
-                    obj.direction = boids(leadingBoidID).direction * transitionMaxis2;
-                end
             end
         end
 
@@ -128,7 +124,7 @@ classdef Boid
             collisions = [];
             collidingTimes = 0;
 
-            posAtStep = zeros(length(boids), 2);
+            posAtStep = zeros(length(boids), 3);
             % load the position of all boids
             for i = 1 : length(boids)
                 posAtStep(i,:) = boids(i).position;
@@ -185,7 +181,7 @@ classdef Boid
         function potentialPos = getNeighborPos(obj, position)
             potentialPos = [];
 
-            direc = [[0,1];[1,0];[0,-1];[-1,0]];
+            direc = [[1,0,0];[-1,0,0];[0,1,0];[0,-1,0];[0,0,1];[0,0,-1]];
             for i = 1 : length(direc)
                 newPos = position + direc(i, :);
                 if all(newPos)

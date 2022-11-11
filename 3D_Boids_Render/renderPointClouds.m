@@ -3,11 +3,11 @@ clear;
 close all;
 clc;
 
-display = 0;
+display = 1;
 fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
 iterations = 1;
 
-dispatcherPos = [0, 0];
+dispatcherPos = [0, 0, 0];
 maxSpeed = 5;
 checkSteps = 5;
 timeunit = 1/25;
@@ -31,7 +31,6 @@ if display
     xlim([0, displayPlotSize]);
     ylim([0, displayPlotSize]);
     zlim([0, displayPlotSize]);
-    view(2);
     arrows = [];
 
     for i = 1 : boidsNum
@@ -47,8 +46,8 @@ totalCollisions = 0;
 unWanteseCollisions = 0;
 
 
-lastStepPos = zeros(boidsNum, 2);
-currentStepPos = zeros(boidsNum, 2);
+lastStepPos = zeros(boidsNum, 3);
+currentStepPos = zeros(boidsNum, 3);
 
 for iterate = 1 : iterations
     for ptCld = 1 : size(pointClouds, 3)
@@ -129,7 +128,7 @@ for iterate = 1 : iterations
 
                     if abs(norm(boids(i).position - boids(j).position)) < dispCellRadius
                         
-                        fprintf("Drone %d at [%.4f, %.4f] collided with drone %d at [%.4f, %.4f], reletive distance %f \n", i, boids(i).position, j, boids(j).position, norm(boids(i).position - boids(j).position));
+                        fprintf("Drone %d at [%.4f, %.4f, %.4f] collided with drone %d at [%.4f, %.4f, %.4f], reletive distance %f \n", i, boids(i).position, j, boids(j).position, norm(boids(i).position - boids(j).position));
                         totalCollisions = totalCollisions + 1;
                         if ~boids(j).arrived
                             unWanteseCollisions = unWanteseCollisions + 1;
@@ -137,7 +136,7 @@ for iterate = 1 : iterations
                         arrived(i) = 1;
                         boids(i).removed = true;
                         boids(i).arrived = true;
-                        boids(i).position = [-100, -100];
+                        boids(i).position = [-100, -100, -100];
                         arrivedNum = arrivedNum + 1;
                         if display
                             arrows(i) = arrow(arrows(i),'Start',boids(i).position,'Stop',boids(i).position,'Length',3,'BaseAngle',20, 'Color', 'b');
@@ -159,7 +158,7 @@ for iterate = 1 : iterations
 
             end
             if display
-                pause(0.001);
+                pause(0.0000001);
             end
             fprintf("Iteration %d, rendering %s, step %d, %d has arrived, total %d collisions, %d are un-expected\n", iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions);
 
