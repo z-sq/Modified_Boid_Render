@@ -166,7 +166,7 @@ classdef Boid
                     % if a close boid hasn't been record, and has not
                     % arrived, mark it
 
-                    if ~boids(i).arrived && (~any(collisions) || ~ismember(i, collisions(:,1))) && ...
+                    if ~boids(i).arrived && ...
                             obj.dispCellRadius > abs(norm(posAtStep(obj.ID, :) - posAtStep(i, :)))
                         collisions = [collisions; i, step, posAtStep(obj.ID, :)];
                         collidingTimes = collidingTimes + 1;

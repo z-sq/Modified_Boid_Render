@@ -49,6 +49,8 @@ unWanteseCollisions = 0;
 twoColliding = 0;
 multipleColliding = 0;
 
+exchangeTriggered = 0;
+
 
 lastStepPos = zeros(boidsNum, 3);
 currentStepPos = zeros(boidsNum, 3);
@@ -97,26 +99,31 @@ for iterate = 1 : iterations
                 lastTimeGoToTarget(newBoidID) = step - 1;
             end
 
-
+            if step == 206 && ptCld == 2
+                pause(0.1);
+            end
             
             for i = 1 : size(boids, 2)
                 if boids(i).removed || boids(i).arrived
                     continue;
                 end
 
-                for j = 1 : size(boids, 2)
-                    if ~boids(j).removed && boids(j).arrived
-                        distToObstacle = norm(boids(i).position - boids(j).position);
-                        if distToObstacle < radioRange && ...
-                                norm(boids(j).position - boids(i).position + boids(i).direction * distToObstacle) < boids(i).dispCellRadius
-                            tmp = boids(i).target;
-                            boids(i).target = boids(j).target;
-                            boids(j).target = tmp;
-                            arrived(j) = 0;
-                            boids(j).arrived = false;
-                        end
-                    end
-                end
+%                 for j = 1 : size(boids, 2)
+%                     if ~boids(j).removed && boids(j).arrived
+%                         distToObstacle = norm(boids(i).position - boids(j).position);
+%                         if distToObstacle < radioRange && ...
+%                                 norm(boids(j).position - boids(i).position + boids(i).direction * distToObstacle) < boids(i).dispCellRadius
+%                             tmp = boids(i).target;
+%                             boids(i).target = boids(j).target;
+%                             boids(j).target = tmp;
+%                             arrived(j) = false;
+%                             boids(j).arrived = false;
+%                             arrivedNum = arrivedNum - 1;
+%                             
+%                             exchangeTriggered = exchangeTriggered + 1;
+%                         end
+%                     end
+%                 end
 
                 [boids(i), avoidingType, positionType] = boids(i).planMove(boids);
 
@@ -199,8 +206,8 @@ for iterate = 1 : iterations
             if display
                 pause(0.0000001);
             end
-            fprintf("Iteration %d, rendering %s, step %d, %d arrived, %d collisions, %d are un-wanted, preventedj %d two-boids-collision and %d multi-boid-collision\n", ...
-                iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions, twoColliding, multipleColliding);
+            fprintf("Iteration %d, rendering %s, step %d, %d arrived, %d collisions, %d are un-wanted, %d exchanges triggered, prevented %d two-boids-collision and %d multi-boid-collision\n", ...
+                iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions, exchangeTriggered,twoColliding, multipleColliding);
 
         end
 
