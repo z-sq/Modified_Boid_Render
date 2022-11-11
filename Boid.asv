@@ -35,7 +35,7 @@ classdef Boid
             if collisions
                 obj.avoidCollisions(boids, collisions);
             else
-                obj = obj.goToTarget();
+                obj.goToTarget();
             end
 
             obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
@@ -68,9 +68,9 @@ classdef Boid
                     % if no collisions, quit; if still collisions, add the
                     % place and
                     if size(recheckCollisions,1) == 0
-                        stillColliding = false;
+                        stillColliding = true;
                     elseif size(recheckCollisions,1) >= 1
-                        newPosibleChoose = obj.getNeighborPos(positionChoose(i,:));
+                        newPosibleChoose = obj.getNeighborPos(recheckCollisions(3:4));
                         positionChoose = [positionChoose; newPosibleChoose];
                         positionChoose = unique(positionChoose, 'rows', "stable");
                     end
@@ -123,15 +123,7 @@ classdef Boid
             for step = 1 : obj.checkSteps
                 % update the position
                 for i = 1 : length(boids)
-%                     if i == 38
-%                          fprintf("Drone %d at [%.2f, %.2f] moving [%.2f, %.2f], [%.2f, %.2f] \n", i, posAtStep(i, :),  boids(i).getVelocity(), boids(i).getVelocity() * boids(i).timeUnit);
-%                     end
-
-                    posAtStep(i, :) = posAtStep(i,:) + boids(i).getVelocity() * boids(i).timeUnit;
-% 
-%                     if i == 38
-%                         fprintf("Drone %d predict after step %d at [%.2f, %.2f]\n", i, step, posAtStep(i, :));
-%                     end
+                    posAtStep(i, :) = posAtStep(i) + boids(i).getVelocity() * boids(i).timeUnit;
                 end
 
                 for i = 1 : length(boids)
@@ -149,13 +141,6 @@ classdef Boid
                     end
 
                 end
-
-                % after check the closest collision, if there are, return
-                % the collision information
-                if collisions
-                    return;
-                end
-
             end
 
         end
@@ -168,14 +153,11 @@ classdef Boid
 
         
         function potentialPos = getNeighborPos(obj, position)
-            potentialPos = [];
+            potentialPos = zeros(4,2);
 
             direc = [[0,1];[1,0];[0,-1];[-1,0]];
             for i = 1 : length(direc)
-                newPos = position + direc(i, :);
-                if all(newPos)
-                    potentialPos = [potentialPos; newPos];
-                end
+                potentialPos(i,:) = position + direc(i, :);
             end
         end
     end

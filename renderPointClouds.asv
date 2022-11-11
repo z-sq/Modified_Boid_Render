@@ -1,7 +1,7 @@
 function renderPointClouds()
 clear;
 close all;
-display = true;
+display = false;
 boidsNum = 90;
 fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
 iterations = 1;
@@ -12,7 +12,7 @@ checkSteps = 5;
 timeunit = 1/25;
 dispCellRadius = 0.2;
 illuminationCellRadius = 1;
-launchPerSec = 5;
+launchPerSec = 2;
 
 if display
     % Iniialize the boids with coordinate, and velocity.
@@ -37,6 +37,8 @@ boids = [];
 step = 0;
 
 
+arrivedNum = 0;
+
 lastStepPos = zeros(boidsNum, 2);
 currentStepPos = zeros(boidsNum, 2);
 
@@ -46,20 +48,14 @@ for iterate = 1 : iterations
         arrived = zeros(1,boidsNum);
         arrivedNum = 0;
 
-        if length(boids) == boidsNum
-            for i = 1 : boidsNum
-                boids(i).target = pointClouds(i,:,ptCld);
-            end
-        end
-
         while ~all(arrived)
             step = step + 1;
 
             % at beginning, generate FLSs from dispatcher
-            if length(boids) < boidsNum && ~mod(step, 1/launchPerSec/timeunit)
+            if length(boids) < 90 && ~mod(step, 1/launchPerSec/timeunit)
                 newBoidID = size(boids, 2) + 1;
                 boids = [boids, Boid(newBoidID, dispatcherPos, maxSpeed, checkSteps, timeunit, dispCellRadius)];
-                boids(newBoidID).target = pointClouds(newBoidID,:,ptCld);
+                boids(newBoidID).target = pointClouds(newBoidID,:,1);
                 boids(newBoidID).speed = maxSpeed;
                 boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos)/norm(boids(newBoidID).target - dispatcherPos);
             end
@@ -72,6 +68,10 @@ for iterate = 1 : iterations
                 end
 
                 lastStepPos(i,:) = boids(i).position;
+
+                if step == 995 && i == 38
+                    pause(0.1);
+                end
 
                 boids(i) = boids(i).move(boids);
 
@@ -96,8 +96,6 @@ for iterate = 1 : iterations
                 end
                 pause(0.00001);
             end
-
-            fprintf("Iteration %d, rendering %s, step %d, %d has arrived\n", iterate, fileNames(ptCld), step, arrivedNum);
 
 
         end
