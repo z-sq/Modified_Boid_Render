@@ -14,6 +14,7 @@ classdef Boid
         avoidAngel = pi/4;
         target = [0,0];
         arrived = false;
+        removed = false;
     end
     
     methods
@@ -29,21 +30,26 @@ classdef Boid
             obj.dispCellRadius = dispCellRadius;
         end
 
-        function obj = move(obj, boids)
+        function obj = planMove(obj, boids)
+            % try to go to target
+            obj = obj.goToTarget();
 
+            % update direction change to boids
+            boids(obj.ID) = obj;
+
+            % if there are collisions, start avoiding
             collisions = obj.checkCollision(boids);
             if collisions
-                obj.avoidCollisions(boids, collisions);
-            else
-                obj = obj.goToTarget();
+                obj = obj.avoidCollisions(boids, collisions);
             end
+        end
 
+        function obj = makeMove(obj)
             obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
-
         end
         
         %   Rule 1: Avoid Collisions
-        function avoidCollisions(obj,boids, collisions)
+        function obj = avoidCollisions(obj,boids, collisions)
             
             % Only 2 Boids colliding
             if size(collisions,1) == 1
@@ -62,6 +68,7 @@ classdef Boid
                     end
 
                     obj.direction = (positionChoose(i,:) - obj.position)/norm((positionChoose(i,:) - obj.position));
+                    boids(obj.ID).direction = obj.direction;
 
                     recheckCollisions =  obj.checkCollision(boids);
 
@@ -80,23 +87,30 @@ classdef Boid
             elseif size(collisions, 1) > 1
                 % if multiple Boids Collides, find the one with minimum ID
                 % to be the leading boid
-                leadingBoidID = min(collisions(:,2));
+                leadingBoidID = min(collisions(:,1));
 
                 transitionMaxis1 = [cos(obj.avoidAngel), sin(obj.avoidAngel);-sin(obj.avoidAngel), cos(obj.avoidAngel)];
                 transitionMaxis2 = [cos(2*pi - obj.avoidAngel), sin(2*pi - obj.avoidAngel);-sin(2*pi - obj.avoidAngel), cos(2*pi - obj.avoidAngel)];
                 % for all other boids, rotate their direction to form
-                for i = 1 : size(collisions,2)
-                    collideBoidID = collisions(i,1);
-                    if i == leadingBoidID
-                        collideBoidID = obj.ID;
-                    end
-                    clappingAngle = atan2d(det([boids(leadingBoidID).direction;boids(collideBoidID).direction]),dot(boids(leadingBoidID).direction,boids(collideBoidID).direction));
-                    if clappingAngle <= pi
-                        boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis1;
-                    else
-                        boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis2;
-                    end
+%                 for i = 1 : size(collisions,1)
+%                     collideBoidID = collisions(i,1);
+%                     if collisions(i, 1) == leadingBoidID
+%                         collideBoidID = obj.ID;
+%                     end
+%                     clappingAngle = atan2d(det([boids(leadingBoidID).direction;boids(collideBoidID).direction]),dot(boids(leadingBoidID).direction,boids(collideBoidID).direction));
+%                     if clappingAngle <= 180
+%                         boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis1;
+%                     else
+%                         boids(collideBoidID).direction = boids(leadingBoidID).direction * transitionMaxis2;
+%                     end
+% 
+%                 end
 
+                clappingAngle = atan2d(det([boids(leadingBoidID).direction;obj.direction]),dot(boids(leadingBoidID).direction,obj.direction));
+                if clappingAngle <= 180
+                    obj.direction = boids(leadingBoidID).direction * transitionMaxis1;
+                else
+                    obj.direction = boids(leadingBoidID).direction * transitionMaxis2;
                 end
             end
         end
@@ -118,30 +132,31 @@ classdef Boid
             % load the position of all boids
             for i = 1 : length(boids)
                 posAtStep(i,:) = boids(i).position;
+%                 fprintf("Drone %d at [%.2f, %.2f]\n", i, posAtStep(i, :));
             end
 
             for step = 1 : obj.checkSteps
                 % update the position
                 for i = 1 : length(boids)
-%                     if i == 38
-%                          fprintf("Drone %d at [%.2f, %.2f] moving [%.2f, %.2f], [%.2f, %.2f] \n", i, posAtStep(i, :),  boids(i).getVelocity(), boids(i).getVelocity() * boids(i).timeUnit);
-%                     end
-
                     posAtStep(i, :) = posAtStep(i,:) + boids(i).getVelocity() * boids(i).timeUnit;
-% 
-%                     if i == 38
-%                         fprintf("Drone %d predict after step %d at [%.2f, %.2f]\n", i, step, posAtStep(i, :));
-%                     end
+                        
+%                     fprintf("Drone %d predict after step %d at [%.2f, %.2f]\n", i, step, posAtStep(i, :));
+
                 end
 
                 for i = 1 : length(boids)
                     if i == obj.ID
                         continue;
                     end
+
                     % check if other Boids has enter the display cell of
                     % current boid. If so, mark it
                     % if a close boid hasn't been record, and has not
                     % arrived, mark it
+%                     if (obj.ID == 28 && i == 27) || (obj.ID == 27 && i == 28)
+%                         fprintf("Step %d, Drone %d and %d at [%.4f, %.4f], [%.4f, %.4f], distance: %.4f\n", step, obj.ID, i, posAtStep(obj.ID, :), posAtStep(i, :), norm(posAtStep(obj.ID, :) - posAtStep(i, :)));
+%                     end
+
                     if ~boids(i).arrived && (~any(collisions) || ~ismember(i, collisions(:,1))) && ...
                             obj.dispCellRadius > abs(norm(posAtStep(obj.ID, :) - posAtStep(i, :)))
                         collisions = [collisions; i, step, posAtStep(obj.ID, :)];
