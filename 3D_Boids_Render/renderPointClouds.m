@@ -14,6 +14,7 @@ timeunit = 1/25;
 dispCellRadius = 0.2;
 illuminationCellRadius = 0.5;
 launchPerSec = 5;
+radioRange = 10;
 
 
 for file = 1 : length(fileNames)
@@ -45,9 +46,17 @@ step = 0;
 totalCollisions = 0;
 unWanteseCollisions = 0;
 
+twoColliding = 0;
+multipleColliding = 0;
+
 
 lastStepPos = zeros(boidsNum, 3);
 currentStepPos = zeros(boidsNum, 3);
+
+recoverAvoidance = [];
+
+positionTypeNames = ["Ahead", "side", "side", "side", "side", "Behind"];
+positionTypes = [];
 
 for iterate = 1 : iterations
     for ptCld = 1 : size(pointClouds, 3)
@@ -58,6 +67,9 @@ for iterate = 1 : iterations
         % clear all arrived information
         arrived = zeros(1,boidsNum);
         arrivedNum = 0;
+
+
+        lastTimeGoToTarget = zeros(boidsNum,1);
 
         if length(boids) == boidsNum
             for i = 1 : boidsNum
@@ -78,10 +90,11 @@ for iterate = 1 : iterations
             % at beginning, generate FLSs from dispatcher
             if length(boids) < boidsNum && ~mod(step-1, 1/launchPerSec/timeunit)
                 newBoidID = size(boids, 2) + 1;
-                boids = [boids, Boid(newBoidID, dispatcherPos, maxSpeed, checkSteps, timeunit, dispCellRadius)];
+                boids = [boids, Boid(newBoidID, dispatcherPos, maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange)];
                 boids(newBoidID).target = pointClouds(newBoidID,:,ptCld);
                 boids(newBoidID).speed = maxSpeed;
                 boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos)/norm(boids(newBoidID).target - dispatcherPos);
+                lastTimeGoToTarget(newBoidID) = step - 1;
             end
 
 
@@ -91,11 +104,32 @@ for iterate = 1 : iterations
                     continue;
                 end
 
-%                 if i == 28 && step == 524
-%                     pause(0.01);
-%                 end
+                for j = 1 : size(boids, 2)
+                    if ~boids(j).removed && boids(j).arrived
+                        distToObstacle = norm(boids(i).position - boids(j).position);
+                        if distToObstacle < radioRange && ...
+                                norm(boids(j).position - boids(i).position + boids(i).direction * distToObstacle) < boids(i).dispCellRadius
+                            tmp = boids(i).target;
+                            boids(i).target = boids(j).target;
+                            boids(j).target = tmp;
+                            arrived(j) = 0;
+                            boids(j).arrived = false;
+                        end
+                    end
+                end
 
-                boids(i) = boids(i).planMove(boids);
+                [boids(i), avoidingType, positionType] = boids(i).planMove(boids);
+
+                if avoidingType == 1
+                    twoColliding = twoColliding + 1; 
+                    positionTypes = [positionTypes;positionTypeNames(positionType)];
+                elseif avoidingType == 2
+                    multipleColliding = multipleColliding + 1;
+                elseif avoidingType == 0 && (step - lastTimeGoToTarget(i) - 1)
+                    stepToRecover = step - lastTimeGoToTarget(i) - 1;
+                    lastTimeGoToTarget(i) = step;
+                    recoverAvoidance = [recoverAvoidance; stepToRecover];
+                end
 
             end
 
@@ -115,15 +149,15 @@ for iterate = 1 : iterations
                 % Check if arrived illumination cell
                 if abs(norm(boids(i).position - boids(i).target)) < illuminationCellRadius && ~arrived(i)
                     arrived(i) = 1;
-%                     boids(i).arrived = true;
+                    boids(i).arrived = true;
                     arrivedNum = arrivedNum + 1;
                     arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
                 end
 
                 % check if arrived at center of illumination cell
-                if abs(norm(boids(i).position - boids(i).target)) < dispCellRadius
-                    boids(i).arrived = true;
-                end
+%                 if abs(norm(boids(i).position - boids(i).target)) < dispCellRadius
+%                     boids(i).arrived = true;
+%                 end
 
                 % Check if collided
                 for j = 1 : (i - 1)
@@ -165,13 +199,17 @@ for iterate = 1 : iterations
             if display
                 pause(0.0000001);
             end
-            fprintf("Iteration %d, rendering %s, step %d, %d has arrived, total %d collisions, %d are un-expected\n", iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions);
+            fprintf("Iteration %d, rendering %s, step %d, %d arrived, %d collisions, %d are un-wanted, preventedj %d two-boids-collision and %d multi-boid-collision\n", ...
+                iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions, twoColliding, multipleColliding);
 
         end
 
         writematrix(arrivedInfo, "arrivedInfo.xlsx", 'Sheet',ptCld + iterate - 1);
     end
 end
+
+writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx");
+writematrix(positionTypes, "positionTypes.xlsx");
 
 end
 

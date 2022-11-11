@@ -16,10 +16,11 @@ classdef Boid
         arrived = false;
         removed = false;
         distTraveled = 0;
+        radioRange = 0;
     end
     
     methods
-        function obj = Boid(ID, initialPosition, maxSpeed, checkSteps, timeunit, dispCellRadius)
+        function obj = Boid(ID, initialPosition, maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange)
             %BOID Construct an instance of this class
             %   Detailed explanation goes here
             obj.ID = ID;
@@ -29,9 +30,14 @@ classdef Boid
             obj.position = initialPosition;
             obj.timeUnit = timeunit;
             obj.dispCellRadius = dispCellRadius;
+            obj.radioRange = radioRange;
         end
 
-        function obj = planMove(obj, boids)
+        function [obj, avoidingType, positiontype] = planMove(obj, boids)
+
+            avoidingType = 0;
+            positiontype = 0;
+
             % try to go to target
             obj = obj.goToTarget();
 
@@ -41,7 +47,7 @@ classdef Boid
             % if there are collisions, start avoiding
             collisions = obj.checkCollision(boids);
             if collisions
-                obj = obj.avoidCollisions(boids, collisions);
+                [obj, avoidingType, positiontype] = obj.avoidCollisions(boids, collisions);
             end
         end
 
@@ -51,10 +57,13 @@ classdef Boid
         end
         
         %   Rule 1: Avoid Collisions
-        function obj = avoidCollisions(obj,boids, collisions)
+        function [obj, avoidingType, positionChosedType] = avoidCollisions(obj,boids, collisions)
+            avoidingType = 0;
+            positionChosedType = 0;
             
             % Only 2 Boids colliding
             if size(collisions,1) == 1
+                avoidingType = 1;
                 positionChoose = [];
 
                % if just 2 Boids colliding
@@ -69,7 +78,8 @@ classdef Boid
                         continue;
                     end
 
-                    obj.direction = (positionChoose(i,:) - obj.position)/norm((positionChoose(i,:) - obj.position));
+                    obj.direction = (positionChoose(i,1:3) - obj.position)/norm((positionChoose(i,1:3) - obj.position));
+                    positionChosedType = positionChoose(i,4);
                     boids(obj.ID).direction = obj.direction;
 
                     recheckCollisions =  obj.checkCollision(boids);
@@ -79,14 +89,18 @@ classdef Boid
                     if size(recheckCollisions,1) == 0
                         stillColliding = false;
                     elseif size(recheckCollisions,1) >= 1
-                        newPosibleChoose = obj.getNeighborPos(positionChoose(i,:));
+                        newPosibleChoose = obj.getNeighborPos(positionChoose(i,1:3));
                         positionChoose = [positionChoose; newPosibleChoose];
-                        positionChoose = unique(positionChoose, 'rows', "stable");
+                        [uniquePos, originIndex, newIndex] = unique(positionChoose(:,1:3), 'rows', "stable");
+                        positionChoose = positionChoose(originIndex,:); 
                     end
 
                 end
 
             elseif size(collisions, 1) > 1
+
+                avoidingType = 2;
+
                 % if multiple Boids Collides, find the one with minimum ID
                 % to be the leading boid
                 leadingBoidID = min(collisions(:,1));
@@ -151,9 +165,6 @@ classdef Boid
                     % current boid. If so, mark it
                     % if a close boid hasn't been record, and has not
                     % arrived, mark it
-%                     if (obj.ID == 28 && i == 27) || (obj.ID == 27 && i == 28)
-%                         fprintf("Step %d, Drone %d and %d at [%.4f, %.4f], [%.4f, %.4f], distance: %.4f\n", step, obj.ID, i, posAtStep(obj.ID, :), posAtStep(i, :), norm(posAtStep(obj.ID, :) - posAtStep(i, :)));
-%                     end
 
                     if ~boids(i).arrived && (~any(collisions) || ~ismember(i, collisions(:,1))) && ...
                             obj.dispCellRadius > abs(norm(posAtStep(obj.ID, :) - posAtStep(i, :)))
@@ -180,16 +191,41 @@ classdef Boid
         end
 
         
-        function potentialPos = getNeighborPos(obj, position)
+        function markedPos = getNeighborPos(obj, position)
             potentialPos = [];
 
             direc = [[1,0,0];[-1,0,0];[0,1,0];[0,-1,0];[0,0,1];[0,0,-1]];
+
+            clappingAngles = [];
+
+            
             for i = 1 : length(direc)
                 newPos = position + direc(i, :);
-                if all(newPos)
-                    potentialPos = [potentialPos; newPos];
+
+                newDirection = (newPos - obj.position)/norm(newPos - obj.position);
+                dotOfDirections = dot(newDirection, obj.direction);
+                crossOfDirections = cross(newDirection, obj.direction);
+                clappingAngle = atan2(norm(crossOfDirections),dotOfDirections);
+                if clappingAngle < 0
+                    clappingAngle = 2*pi + clappingAngle;
+                end
+                clappingAngles = [clappingAngles; clappingAngle, i];
+
+                potentialPos = [potentialPos; newPos];
+            end
+
+            clappingAngles = sortrows(clappingAngles,1);
+
+            markedPos = [];
+
+            for i = 1: length(clappingAngles)
+                if all(potentialPos(clappingAngles(i,2),:))
+                    % i value means the index of clapping angle, where 1 is
+                    % the position ahead, 6 is the behiend, 2-5 are sides
+                    markedPos = [markedPos; potentialPos(clappingAngles(i,2),:), i];
                 end
             end
+
         end
     end
 end
