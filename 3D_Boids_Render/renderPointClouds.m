@@ -1,9 +1,9 @@
 function renderPointClouds()
-clear;
-close all;
-clc;
+% clear;
+% close all;
+% clc;
 
-display = 0;
+display = 1;
 fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
 iterations = 2;
 
@@ -99,31 +99,43 @@ for iterate = 1 : iterations
                 lastTimeGoToTarget(newBoidID) = step - 1;
             end
 
-            if step == 206 && ptCld == 2
-                pause(0.1);
-            end
-            
             for i = 1 : size(boids, 2)
                 if boids(i).removed || boids(i).arrived
                     continue;
                 end
 
-%                 for j = 1 : size(boids, 2)
-%                     if ~boids(j).removed && boids(j).arrived
-%                         distToObstacle = norm(boids(i).position - boids(j).position);
-%                         if distToObstacle < radioRange && ...
-%                                 norm(boids(j).position - boids(i).position + boids(i).direction * distToObstacle) < boids(i).dispCellRadius
-%                             tmp = boids(i).target;
-%                             boids(i).target = boids(j).target;
-%                             boids(j).target = tmp;
-%                             arrived(j) = false;
-%                             boids(j).arrived = false;
-%                             arrivedNum = arrivedNum - 1;
-%                             
-%                             exchangeTriggered = exchangeTriggered + 1;
-%                         end
-%                     end
-%                 end
+                for j = 1 : size(boids, 2)
+                    
+                    if step == 74 && i==90 && ptCld==2 && j == 86
+                        pause(0.1);
+                    end
+
+                    if ~boids(j).removed && boids(j).arrived
+                        distToObstacle = norm(boids(i).position - boids(j).position);
+                        if distToObstacle < radioRange && ...
+                                norm(boids(j).position - boids(i).position - boids(i).direction * distToObstacle) < boids(i).dispCellRadius && ...
+                                norm(boids(j).position - boids(i).position) < illuminationCellRadius
+
+                            tmp = boids(i).target;
+                            boids(i).target = boids(j).target;
+                            boids(j).target = tmp;
+                            arrived(j) = false;
+                            boids(j).arrived = false;
+                            arrivedNum = arrivedNum - 1;
+                            
+                            exchangeTriggered = exchangeTriggered + 1;
+
+                            fprintf("Drone %d and %d exchange target\n", i, j);
+                        end
+                        end
+                end
+            end
+
+
+            for i = 1 : size(boids, 2)
+                if boids(i).removed || boids(i).arrived
+                    continue;
+                end
 
                 [boids(i), avoidingType, positionType] = boids(i).planMove(boids);
 
