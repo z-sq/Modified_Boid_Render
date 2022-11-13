@@ -1,9 +1,9 @@
-function renderPointClouds()
+function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderPointClouds(illumiToDispCellRatio)
 % clear;
 % close all;
 % clc;
 
-display = 1;
+display = 0;
 fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
 iterations = 2;
 
@@ -12,10 +12,11 @@ maxSpeed = 5;
 checkSteps = 5;
 timeunit = 1/25;
 dispCellRadius = 0.2;
-illuminationCellRadius = 0.5;
+% illumiToDispCellRatio = 5;
 launchPerSec = 5;
 radioRange = 10;
 
+illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
 for file = 1 : length(fileNames)
     pointClouds(:,:,file) = readmatrix(fileNames(file));
@@ -59,6 +60,10 @@ recoverAvoidance = [];
 
 positionTypeNames = ["Ahead", "side", "side", "side", "side", "Behind"];
 positionTypes = [];
+
+exchangeInfo = [];
+
+stepsForPtCld = [];
 
 for iterate = 1 : iterations
     for ptCld = 1 : size(pointClouds, 3)
@@ -124,6 +129,7 @@ for iterate = 1 : iterations
                             arrivedNum = arrivedNum - 1;
                             
                             exchangeTriggered = exchangeTriggered + 1;
+                            exchangeInfo = [exchangeInfo; i, j, boids(i).position, boids(i).target];
 
                             fprintf("Drone %d and %d exchange target\n", i, j);
                         end
@@ -134,6 +140,8 @@ for iterate = 1 : iterations
 
             for i = 1 : size(boids, 2)
                 if boids(i).removed || boids(i).arrived
+                    lastTimeGoToTarget(i,1) = step;
+                    
                     continue;
                 end
 
@@ -141,13 +149,16 @@ for iterate = 1 : iterations
 
                 if avoidingType == 1
                     twoColliding = twoColliding + 1; 
-                    positionTypes = [positionTypes;positionTypeNames(positionType)];
+                    positionTypes = [positionTypes;positionTypeNames(positionType), i, step];
                 elseif avoidingType == 2
                     multipleColliding = multipleColliding + 1;
-                elseif avoidingType == 0 && (step - lastTimeGoToTarget(i) - 1)
-                    stepToRecover = step - lastTimeGoToTarget(i) - 1;
-                    lastTimeGoToTarget(i) = step;
-                    recoverAvoidance = [recoverAvoidance; stepToRecover];
+                elseif avoidingType == 0 
+                    if (step - lastTimeGoToTarget(i,1) - 1)
+                        stepToRecover = step - lastTimeGoToTarget(i,1) - 1;
+                        recoverAvoidance = [recoverAvoidance; stepToRecover, i , lastTimeGoToTarget(i,1), step];
+                    end
+
+                    lastTimeGoToTarget(i,1) = step;
                 end
 
             end
@@ -219,16 +230,18 @@ for iterate = 1 : iterations
                 pause(0.0000001);
             end
             fprintf("Iteration %d, rendering %s, step %d, %d arrived, %d collisions, %d are un-wanted, %d exchanges triggered, prevented %d two-boids-collision and %d multi-boid-collision\n", ...
-                iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions, exchangeTriggered,twoColliding, multipleColliding);
+                iterate, fileNames(ptCld), step, arrivedNum, totalCollisions, unWanteseCollisions, exchangeTriggered, twoColliding, multipleColliding);
 
         end
 
-        writematrix(arrivedInfo, "arrivedInfo.xlsx", 'Sheet',ptCld + iterate - 1);
+%         writematrix(arrivedInfo, "arrivedInfo.xlsx", 'Sheet',ptCld + iterate - 1);
+        stepsForPtCld = [stepsForPtCld, step];
     end
 end
 
-writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx");
-writematrix(positionTypes, "positionTypes.xlsx");
+% writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx");
+% writematrix(positionTypes, "positionTypes.xlsx");
+% writematrix(exchangeInfo, "exchangeInfo.xlsx");
 
 end
 
