@@ -3,8 +3,9 @@ function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, s
 % close all;
 % clc;
 
-display = 0;
-fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
+display = 1;
+% fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
+fileNames = ["./cat_114.csv", "./teapot_100.csv", "./butterfly_94.csv"];
 iterations = 2;
 
 dispatcherPos = [0, 0, 0];
@@ -18,13 +19,11 @@ radioRange = 10;
 
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
-for file = 1 : length(fileNames)
-    pointClouds(:,:,file) = readmatrix(fileNames(file));
-end
+pointCloud(:,:) = readmatrix(fileNames(1));
 
-displayPlotSize = max(pointClouds, [],'all') * 1.2;
+displayPlotSize = max(pointCloud, [],'all') * 1.2;
 
-boidsNum = size(pointClouds,1);
+boidsNum = size(pointCloud,1);
 
 if display
     % Iniialize the boids with coordinate, and velocity.
@@ -70,28 +69,42 @@ distance = [];
 distPerPtCld = [];
 
 for iterate = 1 : iterations
-    for ptCld = 1 : size(pointClouds, 3)
+    for ptCld = 1 : length(fileNames)
 
+        pointCloud = readmatrix(fileNames(ptCld));
         step = 0;
         arrivedInfo = zeros(boidsNum,3);
 
         % clear all arrived information
         arrived = zeros(1,boidsNum);
         arrivedNum = 0;
-
+        
+        boidsNumRequired = size(pointCloud,1);
 
         lastTimeGoToTarget = zeros(boidsNum,1);
 
         if length(boids) == boidsNum
-            for i = 1 : boidsNum
+            for i = 1 : boidsNumRequired
                 if boids(i).removed
                     arrived(i) = 1;
                     arrivedNum = arrivedNum + 1;
                     continue;
                 end
-                boids(i).target = pointClouds(i,:,ptCld);
+                boids(i).target = pointCloud(i,:);
                 boids(i).arrived = false;
                 boids(i).distTraveled = 0;
+            end
+
+            for i = boidsNumRequired : boidsNum
+                if boids(i).removed
+                    arrived(i) = 1;
+                    arrivedNum = arrivedNum + 1;
+                    continue;
+                end
+                boids(i).goDark = true;
+                boids(i).arrived = true;
+                boids(i).distTraveled = 0;
+                arrived(i) = 1;
             end
         end
 
@@ -102,7 +115,7 @@ for iterate = 1 : iterations
             if length(boids) < boidsNum && ~mod(step-1, 1/launchPerSec/timeunit)
                 newBoidID = size(boids, 2) + 1;
                 boids = [boids, Boid(newBoidID, dispatcherPos, maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange)];
-                boids(newBoidID).target = pointClouds(newBoidID,:,ptCld);
+                boids(newBoidID).target = pointCloud(newBoidID,:);
                 boids(newBoidID).speed = maxSpeed;
                 boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos)/norm(boids(newBoidID).target - dispatcherPos);
                 lastTimeGoToTarget(newBoidID) = step - 1;
@@ -128,9 +141,17 @@ for iterate = 1 : iterations
                             tmp = boids(i).target;
                             boids(i).target = boids(j).target;
                             boids(j).target = tmp;
+
+                            % change go dark
+                            tmp = boids(i).goDark;
+                            boids(i).goDark = boids(j).goDark;
+                            boids(j).goDark = tmp;
+
                             arrived(j) = false;
                             boids(j).arrived = false;
                             arrivedNum = arrivedNum - 1;
+
+                            arrived(j) = 0;
                             
                             exchangeTriggered = exchangeTriggered + 1;
                             exchangeInfo = [exchangeInfo; i, j, boids(i).position, boids(i).target];
@@ -223,7 +244,12 @@ for iterate = 1 : iterations
                     end
 
                     if arrived(i)
-                        arrows(i) = arrow(arrows(i),'Start',lastStepPos(i,:),'Stop',currentStepPos(i,:),'Length',3,'BaseAngle',20, 'Color', 'r');
+                        if boids(i).goDark
+                            arrows(i) = arrow(arrows(i),'Start',lastStepPos(i,:),'Stop',currentStepPos(i,:),'Length',3,'BaseAngle',20, 'Color', [0.2, 0.2, 0.2]);
+
+                        else
+                            arrows(i) = arrow(arrows(i),'Start',lastStepPos(i,:),'Stop',currentStepPos(i,:),'Length',3,'BaseAngle',20, 'Color', 'r');
+                        end
                     else
                         arrows(i) = arrow(arrows(i),'Start',lastStepPos(i,:),'Stop',currentStepPos(i,:),'Length',3,'BaseAngle',20, 'Color', 'b');
                     end

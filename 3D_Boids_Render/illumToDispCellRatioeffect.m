@@ -1,5 +1,6 @@
 
-ratios = [1,1.25,2.5,3,5,8,10,13,15,20,25,30];
+% ratios = [1,1.25,2.5,3,5,8,10,13,15,20,25,30];
+ratios = [2.5];
 result = [];
 
 for i = 1: length(ratios)
@@ -8,5 +9,5 @@ for i = 1: length(ratios)
 end
 
 
-writematrix(result, "ratioEffects_Rule2_changed_2.xlsx");
+% writematrix(result, "ratioEffects_Rule2_changed_2.xlsx");
 

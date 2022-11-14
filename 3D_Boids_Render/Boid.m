@@ -17,6 +17,7 @@ classdef Boid
         removed = false;
         distTraveled = 0;
         radioRange = 0;
+        goDark = false;
     end
     
     methods
