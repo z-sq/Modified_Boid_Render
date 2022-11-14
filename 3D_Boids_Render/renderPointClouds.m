@@ -65,7 +65,9 @@ exchangeInfo = [];
 
 stepsForPtCld = [];
 
-distance = zeros(boidsNum, 1);
+distance = [];
+
+distPerPtCld = [];
 
 for iterate = 1 : iterations
     for ptCld = 1 : size(pointClouds, 3)
@@ -121,7 +123,7 @@ for iterate = 1 : iterations
                         distToObstacle = norm(boids(i).position - boids(j).position);
                         if distToObstacle < radioRange && ...
                                 norm(boids(j).position - boids(i).position - boids(i).direction * distToObstacle) < boids(i).dispCellRadius && ...
-                                norm(boids(j).position - boids(i).position) < 2 * illuminationCellRadius
+                                norm(boids(j).position - boids(i).position) < illuminationCellRadius
 
                             tmp = boids(i).target;
                             boids(i).target = boids(j).target;
@@ -238,13 +240,16 @@ for iterate = 1 : iterations
 
 %         writematrix(arrivedInfo, "arrivedInfo.xlsx", 'Sheet',ptCld + iterate - 1);
         stepsForPtCld = [stepsForPtCld, step];
+
         for i = 1 : boidsNum
-            distance(i,:) = [distance(i,:), boids(i).distTraveled];
+            distPerPtCld(i,:) = [boids(i).distTraveled];
         end
+
+        distance = [distance, distPerPtCld];
     end
 end
 pause(0.01);
-writematrix(distance, "distanceTraveled.xlsx", 'Sheet', ratioNum);
+writematrix(distance, "distanceTraveled_origin.xlsx", 'Sheet', ratioNum);
 
 % writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx");
 % writematrix(positionTypes, "positionTypes.xlsx");
