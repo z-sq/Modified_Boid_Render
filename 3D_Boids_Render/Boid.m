@@ -131,6 +131,9 @@ classdef Boid
         % Rule 2: go To Target
         function obj = goToTarget(obj)
             obj.direction = (obj.target - obj.position)/norm(obj.target - obj.position);
+            if norm(obj.target - obj.position) == 0
+                obj.direction = [0,0,0];
+            end
         end
 
 
@@ -204,12 +207,14 @@ classdef Boid
                 newPos = position + direc(i, :);
 
                 newDirection = (newPos - obj.position)/norm(newPos - obj.position);
-                dotOfDirections = dot(newDirection, obj.direction);
-                crossOfDirections = cross(newDirection, obj.direction);
-                clappingAngle = atan2(norm(crossOfDirections),dotOfDirections);
+
+                clappingAngle = calculateClappingAngle(obj.direction, newDirection);
+
+
                 if clappingAngle < 0
                     clappingAngle = 2*pi + clappingAngle;
                 end
+
                 clappingAngles = [clappingAngles; clappingAngle, i];
 
                 potentialPos = [potentialPos; newPos];

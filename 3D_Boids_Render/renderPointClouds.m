@@ -1,29 +1,33 @@
 function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderPointClouds(illumiToDispCellRatio, ratioNum)
-% clear;
-% close all;
-% clc;
 
-display = 1;
+display = 0;
+
+showPointCloud = 1;
 % fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
-fileNames = ["./cat_114.csv", "./teapot_100.csv", "./butterfly_94.csv"];
-iterations = 2;
+% fileNames = ["./cat_114.csv", "./teapot_100.csv", "./butterfly_94.csv"];
+% fileNames = ["pt1619.1727.ptcld", "pt1630.1562.ptcld", "pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
 
-dispatcherPos = [0, 0, 0];
+fileNames = ["pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
+iterations = 1;
+
+dispatcherPos = [[0, 0, 0];[0, 100 ,0];[100, 0, 0]; [100, 100 ,0]];
 maxSpeed = 5;
-checkSteps = 5;
+checkSteps = 3;
 timeunit = 1/25;
 dispCellRadius = 0.2;
 % illumiToDispCellRatio = 5;
-launchPerSec = 5;
+launchPerSec = 12.5;
 radioRange = 10;
 
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
-pointCloud(:,:) = readmatrix(fileNames(1));
+pointCloud = convertCellListToMat("./pointclouds/" + fileNames(1));
 
 displayPlotSize = max(pointCloud, [],'all') * 1.2;
 
 boidsNum = size(pointCloud,1);
+
+boidsDispatched = 0;
 
 if display
     % Iniialize the boids with coordinate, and velocity.
@@ -35,11 +39,9 @@ if display
     arrows = [];
 
     for i = 1 : boidsNum
-        arrows(i) = arrow('Start',[0,0,0],'Stop',[0,0,0],'Length',0,'BaseAngle',0);
+        arrows(i) = arrow('Start',[-100,-100,-100],'Stop',[-100,-100,-100],'Length',0,'BaseAngle',0);
     end
 end
-
-boids = [];
 
 step = 0;
 
@@ -71,7 +73,8 @@ distPerPtCld = [];
 for iterate = 1 : iterations
     for ptCld = 1 : length(fileNames)
 
-        pointCloud = readmatrix(fileNames(ptCld));
+%         pointCloud = readmatrix(fileNames(ptCld));
+        pointCloud = convertCellListToMat("./pointclouds/" + fileNames(ptCld));
         step = 0;
         arrivedInfo = zeros(boidsNum,3);
 
@@ -83,7 +86,7 @@ for iterate = 1 : iterations
 
         lastTimeGoToTarget = zeros(boidsNum,1);
 
-        if length(boids) == boidsNum
+        if boidsDispatched == boidsNum
             for i = 1 : boidsNumRequired
                 if boids(i).removed
                     arrived(i) = 1;
@@ -105,6 +108,9 @@ for iterate = 1 : iterations
                 boids(i).arrived = true;
                 boids(i).distTraveled = 0;
                 arrived(i) = 1;
+                if display
+                    arrows(i) = arrow(arrows(i),'Start',boids(i).position,'Stop',boids(i).position,'Length',3,'BaseAngle',20, 'Color', [0.2, 0.2, 0.2]);
+                end
             end
         end
 
@@ -112,31 +118,41 @@ for iterate = 1 : iterations
             step = step + 1;
 
             % at beginning, generate FLSs from dispatcher
-            if length(boids) < boidsNum && ~mod(step-1, 1/launchPerSec/timeunit)
-                newBoidID = size(boids, 2) + 1;
-                boids = [boids, Boid(newBoidID, dispatcherPos, maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange)];
-                boids(newBoidID).target = pointCloud(newBoidID,:);
-                boids(newBoidID).speed = maxSpeed;
-                boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos)/norm(boids(newBoidID).target - dispatcherPos);
-                lastTimeGoToTarget(newBoidID) = step - 1;
+            if boidsDispatched < boidsNum && ~mod(step-1, 1/launchPerSec/timeunit)
+
+                for dispatcher = 1 : size(dispatcherPos, 1)
+                    newBoidID = boidsDispatched + 1;
+                    if newBoidID > boidsNum
+                        break;
+                    end
+                    boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange);
+%                     boids(newBoidID) = Boid(newBoidID,pointCloud(newBoidID,:), maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange);
+                    boids(newBoidID).target = pointCloud(newBoidID,:);
+                    boids(newBoidID).speed = maxSpeed;
+                    boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos(dispatcher,:))/norm(boids(newBoidID).target - dispatcherPos(dispatcher,:));
+                    lastTimeGoToTarget(newBoidID) = step - 1;
+                    boidsDispatched = boidsDispatched + 1;
+                end
             end
 
-            for i = 1 : size(boids, 2)
+            for i = 1 : boidsDispatched
                 if boids(i).removed || boids(i).arrived
                     continue;
                 end
 
-                for j = 1 : size(boids, 2)
+                for j = 1 : boidsDispatched
                     
-                    if step == 74 && i==90 && ptCld==2 && j == 86
-                        pause(0.1);
-                    end
+%                     if (step == 663 || step == 664 || step == 665) && i== 60 && j == 59
+%                         pause(0.1);
+%                     end
 
                     if ~boids(j).removed && boids(j).arrived
                         distToObstacle = norm(boids(i).position - boids(j).position);
+                        clappingAngle = calculateClappingAngle((boids(j).position - boids(i).position), boids(i).direction);
                         if distToObstacle < radioRange && ...
-                                norm(boids(j).position - boids(i).position - boids(i).direction * distToObstacle) < boids(i).dispCellRadius && ...
-                                norm(boids(j).position - boids(i).position) < illuminationCellRadius
+                                abs(clappingAngle) <= pi/2 && ...
+                                (sin(abs(clappingAngle)) * distToObstacle) < boids(i).dispCellRadius && ...
+                                norm(boids(j).position - boids(i).position) < 1.5 * illuminationCellRadius
 
                             tmp = boids(i).target;
                             boids(i).target = boids(j).target;
@@ -158,12 +174,12 @@ for iterate = 1 : iterations
 
                             fprintf("Drone %d and %d exchange target\n", i, j);
                         end
-                        end
+                    end
                 end
             end
 
 
-            for i = 1 : size(boids, 2)
+            for i = 1 : boidsDispatched
                 if boids(i).removed || boids(i).arrived
                     lastTimeGoToTarget(i,1) = step;
                     
@@ -188,7 +204,7 @@ for iterate = 1 : iterations
 
             end
 
-            for i = 1 : size(boids, 2)
+            for i = 1 : boidsDispatched
                 if boids(i).removed || boids(i).arrived
                     continue;
                 end
@@ -272,14 +288,39 @@ for iterate = 1 : iterations
         end
 
         distance = [distance, distPerPtCld];
+        if showPointCloud
+            displayPlotSize = max(pointCloud, [],'all') * 1.2;
+            figure(j + 1);
+            plot3(0,0,0);
+            xlim([0, displayPlotSize]);
+            ylim([0, displayPlotSize]);
+            zlim([0, displayPlotSize]);
+            hold on;
+            
+            for i = 1 : boidsDispatched
+                if boids(i).removed
+                    continue;
+                end
+
+                if boids(i).goDark
+                    plot3(lastStepPos(i,1),lastStepPos(i,2),lastStepPos(i,3),'.','Color', [0.8, 0.8, 0.8]);
+                    hold on;
+                else
+                   plot3(lastStepPos(i,1),lastStepPos(i,2),lastStepPos(i,3),'.','Color', 'r');
+                   hold on;
+                end
+            end
+
+            pause(0.0000001);
+        end
     end
 end
 pause(0.01);
-writematrix(distance, "distanceTraveled_origin.xlsx", 'Sheet', ratioNum);
+writematrix(distance, "distanceTraveled.xlsx", 'Sheet', ratioNum);
 
-% writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx");
-% writematrix(positionTypes, "positionTypes.xlsx");
-% writematrix(exchangeInfo, "exchangeInfo.xlsx");
+writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx", 'Sheet', ratioNum);
+writematrix(positionTypes, "positionTypes.xlsx", 'Sheet', ratioNum);
+writematrix(exchangeInfo, "exchangeInfo.xlsx", 'Sheet', ratioNum);
 
 end
 
