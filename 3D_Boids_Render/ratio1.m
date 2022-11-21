@@ -8,7 +8,7 @@ i = 2;
 [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderPointClouds(ratios(i), i);
 result = [result; ratios(i), totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld];
 
-writematrix(result, "ratioEffects.xlsx", 'Sheet', i);
+writematrix(result, "ratioEffects_changedRules.xlsx", 'Sheet', i);
 % end
 
 

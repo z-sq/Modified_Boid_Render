@@ -5,6 +5,7 @@ classdef Boid
     properties
         ID = 0;
         maxSpeed = 0;
+        maxAcc = 5;
         direction = [0, 0, 0];
         speed = 0;
         checkSteps = 0;
@@ -21,11 +22,12 @@ classdef Boid
     end
     
     methods
-        function obj = Boid(ID, initialPosition, maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange)
+        function obj = Boid(ID, initialPosition, maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange)
             %BOID Construct an instance of this class
             %   Detailed explanation goes here
             obj.ID = ID;
             obj.maxSpeed = maxSpeed;
+            obj.maxAcc = maxAcc;
             obj.speed = obj.maxSpeed;
             obj.checkSteps = checkSteps;
             obj.position = initialPosition;
@@ -53,6 +55,9 @@ classdef Boid
         end
 
         function obj = makeMove(obj)
+            if obj.speed < obj.maxSpeed
+                obj.speed = obj.speed + min(obj.maxAcc * obj.timeUnit, obj.maxAcc - obj.speed);
+            end
             obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
             obj.distTraveled = obj.distTraveled + obj.speed * obj.timeUnit;
         end

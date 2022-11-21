@@ -1,4 +1,4 @@
-fileNames = ["pt1619.1727.ptcld", "pt1630.1562.ptcld", "pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
+fileNames = ["./Point Cloud Squence/pt1605_change.ptcld","./Point Cloud Squence/pt1709_change.ptcld","./Point Cloud Squence/pt1811_change.ptcld","pt1547_change.ptcld", "./Point Cloud Squence/pt1379_change.ptcld"];
 
 for i = 1 : length(fileNames)
     pointCloud = convertCellListToMat("./pointclouds/" + fileNames(i));

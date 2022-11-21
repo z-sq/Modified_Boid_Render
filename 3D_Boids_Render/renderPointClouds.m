@@ -7,17 +7,26 @@ showPointCloud = 1;
 % fileNames = ["./cat_114.csv", "./teapot_100.csv", "./butterfly_94.csv"];
 % fileNames = ["pt1619.1727.ptcld", "pt1630.1562.ptcld", "pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
 
-fileNames = ["pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
+% fileNames = ["pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
+fileNames = ["pt1605_change.ptcld","pt1709_change.ptcld","pt1811_change.ptcld","pt1547_change.ptcld", "pt1379_change.ptcld"];
+
 iterations = 1;
 
 dispatcherPos = [[0, 0, 0];[0, 100 ,0];[100, 0, 0]; [100, 100 ,0]];
 maxSpeed = 5;
+maxAcc = 5;
 checkSteps = 3;
 timeunit = 1/25;
 dispCellRadius = 0.2;
 % illumiToDispCellRatio = 5;
 launchPerSec = 12.5;
 radioRange = 10;
+
+checkIllumCells = 1.5;
+
+if illumiToDispCellRatio * checkIllumCells * dispCellRadius <= 3 * maxSpeed * timeunit 
+    checkIllumCells = 3;
+end
 
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
@@ -125,7 +134,7 @@ for iterate = 1 : iterations
                     if newBoidID > boidsNum
                         break;
                     end
-                    boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange);
+                    boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange);
 %                     boids(newBoidID) = Boid(newBoidID,pointCloud(newBoidID,:), maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange);
                     boids(newBoidID).target = pointCloud(newBoidID,:);
                     boids(newBoidID).speed = maxSpeed;
@@ -152,7 +161,7 @@ for iterate = 1 : iterations
                         if distToObstacle < radioRange && ...
                                 abs(clappingAngle) <= pi/2 && ...
                                 (sin(abs(clappingAngle)) * distToObstacle) < boids(i).dispCellRadius && ...
-                                norm(boids(j).position - boids(i).position) < 1.5 * illuminationCellRadius
+                                norm(boids(j).position - boids(i).position) < checkIllumCells * illuminationCellRadius
 
                             tmp = boids(i).target;
                             boids(i).target = boids(j).target;
@@ -316,11 +325,11 @@ for iterate = 1 : iterations
     end
 end
 pause(0.01);
-writematrix(distance, "distanceTraveled.xlsx", 'Sheet', ratioNum);
+writematrix(distance, "distanceTraveled_499.xlsx", 'Sheet', ratioNum);
 
-writematrix(recoverAvoidance, "recoverFromAvoidance.xlsx", 'Sheet', ratioNum);
-writematrix(positionTypes, "positionTypes.xlsx", 'Sheet', ratioNum);
-writematrix(exchangeInfo, "exchangeInfo.xlsx", 'Sheet', ratioNum);
+writematrix(recoverAvoidance, "recoverFromAvoidance_499.xlsx", 'Sheet', ratioNum);
+writematrix(positionTypes, "positionTypes_499.xlsx", 'Sheet', ratioNum);
+writematrix(exchangeInfo, "exchangeInfo_499.xlsx", 'Sheet', ratioNum);
 
 end
 
