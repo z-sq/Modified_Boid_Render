@@ -13,8 +13,8 @@ fileNames = ["pt1605_change.ptcld","pt1709_change.ptcld","pt1811_change.ptcld","
 iterations = 1;
 
 dispatcherPos = [[0, 0, 0];[0, 100 ,0];[100, 0, 0]; [100, 100 ,0]];
-maxSpeed = 5;
-maxAcc = 5;
+maxSpeed = 3;
+maxAcc = 3;
 checkSteps = 3;
 timeunit = 1/25;
 dispCellRadius = 0.2;
@@ -176,8 +176,6 @@ for iterate = 1 : iterations
                             boids(j).arrived = false;
                             arrivedNum = arrivedNum - 1;
 
-                            arrived(j) = 0;
-                            
                             exchangeTriggered = exchangeTriggered + 1;
                             exchangeInfo = [exchangeInfo; i, j, boids(i).position, boids(i).target];
 
@@ -230,6 +228,7 @@ for iterate = 1 : iterations
                 if abs(norm(boids(i).position - boids(i).target)) < illuminationCellRadius && ~arrived(i)
                     arrived(i) = 1;
                     boids(i).arrived = true;
+                    boids(i).speed = 0;
                     arrivedNum = arrivedNum + 1;
                     arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
                 end
