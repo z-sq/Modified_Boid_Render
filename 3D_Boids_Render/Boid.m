@@ -9,7 +9,8 @@ classdef Boid
         direction = [0, 0, 0];
         speed = 0;
         checkSteps = 0;
-        position = [0, 0, 0]
+        position = [0, 0, 0];
+        startPt = [0, 0, 0];
         timeUnit = 0;
         dispCellRadius = 0;
         avoidAngel = pi/4;
@@ -55,9 +56,7 @@ classdef Boid
         end
 
         function obj = makeMove(obj)
-            if obj.speed < obj.maxSpeed
-                obj.speed = obj.speed + min(obj.maxAcc * obj.timeUnit, obj.maxAcc - obj.speed);
-            end
+            obj.speed = obj.calculateSpeed();
             obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
             obj.distTraveled = obj.distTraveled + obj.speed * obj.timeUnit;
         end
@@ -197,6 +196,17 @@ classdef Boid
         % get the velocity by multiplying boid's direction with speed
         function velocity = getVelocity(obj)
             velocity = obj.direction * obj.speed;
+        end
+
+        % apply the speed model of APF
+        function speed = calculateSpeed(obj)
+            distToStart = abs(norm(obj.position - obj.startPt));
+            distToTarget = abs(norm(obj.position - obj.target));
+            l = min(distToTarget,distToStart) * obj.timeUnit * 5;
+            l = max(l, 0.5 * obj.maxAcc * obj.timeUnit^2);
+            speed = (l/obj.timeUnit)/2 - obj.speed;
+            speed = min(speed,obj.maxSpeed);
+            speed = max(speed, obj.maxAcc * obj.timeUnit);
         end
 
         

@@ -3,12 +3,12 @@ function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, s
 display = 0;
 
 showPointCloud = 1;
-% fileNames = ["./butterfly.csv", "./cat.csv","./teapot.csv"];
+fileNames = ["butterfly.csv", "cat.csv","teapot.csv"];
 % fileNames = ["./cat_114.csv", "./teapot_100.csv", "./butterfly_94.csv"];
 % fileNames = ["pt1619.1727.ptcld", "pt1630.1562.ptcld", "pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
 
 % fileNames = ["pt1617.1197.ptcld", "pt1620.997.ptcld", "pt1625.760.ptcld", "pt1608.758.ptcld", "pt1609.454.ptcld"];
-fileNames = ["pt1605_change.ptcld","pt1709_change.ptcld","pt1811_change.ptcld","pt1547_change.ptcld", "pt1379_change.ptcld"];
+% fileNames = ["pt1605_change.ptcld","pt1709_change.ptcld","pt1811_change.ptcld","pt1547_change.ptcld", "pt1379_change.ptcld"];
 
 iterations = 1;
 
@@ -30,7 +30,9 @@ end
 
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
-pointCloud = convertCellListToMat("./pointclouds/" + fileNames(1));
+% pointCloud = convertCellListToMat("./pointclouds/" + fileNames(1));
+
+pointCloud = readmatrix("./pointclouds/" + fileNames(1));
 
 displayPlotSize = max(pointCloud, [],'all') * 1.2;
 
@@ -79,11 +81,13 @@ distance = [];
 
 distPerPtCld = [];
 
+renderInfo = [];
+
 for iterate = 1 : iterations
     for ptCld = 1 : length(fileNames)
 
-%         pointCloud = readmatrix(fileNames(ptCld));
-        pointCloud = convertCellListToMat("./pointclouds/" + fileNames(ptCld));
+        pointCloud = readmatrix("./pointclouds/" + fileNames(ptCld));
+%         pointCloud = convertCellListToMat("./pointclouds/" + fileNames(ptCld));
         step = 0;
         arrivedInfo = zeros(boidsNum,3);
 
@@ -100,19 +104,23 @@ for iterate = 1 : iterations
                 if boids(i).removed
                     arrived(i) = 1;
                     arrivedNum = arrivedNum + 1;
+                    boids(i).startPt = boids(i).position;
                     continue;
                 end
                 boids(i).target = pointCloud(i,:);
+                boids(i).startPt = boids(i).position;
                 boids(i).arrived = false;
                 boids(i).distTraveled = 0;
             end
 
-            for i = boidsNumRequired : boidsNum
+            for i = boidsNumRequired + 1 : boidsNum
                 if boids(i).removed
                     arrived(i) = 1;
                     arrivedNum = arrivedNum + 1;
+                    boids(i).startPt = boids(i).position;
                     continue;
                 end
+                boids(i).startPt = boids(i).position;
                 boids(i).goDark = true;
                 boids(i).arrived = true;
                 boids(i).distTraveled = 0;
@@ -123,7 +131,10 @@ for iterate = 1 : iterations
             end
         end
 
+        speeds = zeros(boidsNum,4);
+
         while ~all(arrived)
+
             step = step + 1;
 
             % at beginning, generate FLSs from dispatcher
@@ -135,8 +146,8 @@ for iterate = 1 : iterations
                         break;
                     end
                     boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange);
-%                     boids(newBoidID) = Boid(newBoidID,pointCloud(newBoidID,:), maxSpeed, checkSteps, timeunit, dispCellRadius, radioRange);
                     boids(newBoidID).target = pointCloud(newBoidID,:);
+                    boids(newBoidID).startPt = [-100, -100, -100];
                     boids(newBoidID).speed = maxSpeed;
                     boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos(dispatcher,:))/norm(boids(newBoidID).target - dispatcherPos(dispatcher,:));
                     lastTimeGoToTarget(newBoidID) = step - 1;
@@ -221,6 +232,13 @@ for iterate = 1 : iterations
 
                 boids(i) = boids(i).makeMove();
 
+
+                speeds(i,1) = max(speeds(i,1), boids(i).speed);
+
+                speeds(i,4) = speeds(i,4) + 1;
+                speeds(i,2) = ((speeds(i,4) - 1) * speeds(i,2) + boids(i).speed) / speeds(i,4);
+                speeds(i,3) = min(speeds(i,3), boids(i).speed);
+
                 currentStepPos(i,:) = boids(i).position;
 
 
@@ -230,6 +248,7 @@ for iterate = 1 : iterations
                     boids(i).arrived = true;
                     boids(i).speed = 0;
                     arrivedNum = arrivedNum + 1;
+
                     arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
                 end
 
@@ -321,14 +340,21 @@ for iterate = 1 : iterations
 
             pause(0.0000001);
         end
+
+        timeSpent = arrivedInfo(:, 1);
+
+        renderInfo = [renderInfo,max(timeSpent), mean(timeSpent), min(timeSpent),...
+            max(speeds(:,1)), mean(speeds(:,2)), min(speeds(:,3)), ...
+            max(distPerPtCld), mean(distPerPtCld), min(distPerPtCld)];
     end
 end
 pause(0.01);
-writematrix(distance, "distanceTraveled_499.xlsx", 'Sheet', ratioNum);
+writematrix(renderInfo, "renderInfo_90.xlsx", 'Sheet', ratioNum);
+% writematrix(distance, "distanceTraveled_90.xlsx", 'Sheet', ratioNum);
 
-writematrix(recoverAvoidance, "recoverFromAvoidance_499.xlsx", 'Sheet', ratioNum);
-writematrix(positionTypes, "positionTypes_499.xlsx", 'Sheet', ratioNum);
-writematrix(exchangeInfo, "exchangeInfo_499.xlsx", 'Sheet', ratioNum);
+% writematrix(recoverAvoidance, "recoverFromAvoidance_90.xlsx", 'Sheet', ratioNum);
+% writematrix(positionTypes, "positionTypes_90.xlsx", 'Sheet', ratioNum);
+% writematrix(exchangeInfo, "exchangeInfo_90.xlsx", 'Sheet', ratioNum);
 
 end
 
