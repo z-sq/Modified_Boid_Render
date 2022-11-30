@@ -5,10 +5,10 @@ result = [];
 
 % for i = 1: length(ratios)
 i = 1;
-[totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderPointClouds(ratios(i), i);
+[totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderWithMisplaced_changeSpeed(ratios(i), i);
 result = [result; ratios(i), totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld];
 
-% writematrix(result, "ratioEffects_90.xlsx", 'Sheet', i);
+writematrix(result, "ratioEffects_misplaced_rule2.xlsx", 'Sheet', i);
 % end
 
 

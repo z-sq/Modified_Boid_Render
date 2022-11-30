@@ -1,4 +1,4 @@
-function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderPointClouds(illumiToDispCellRatio, ratioNum)
+function [totalCollisions, exchangeTriggered, twoColliding, multipleColliding, stepsForPtCld] = renderWithMisplaced_changeSpeed(illumiToDispCellRatio, ratioNum)
 
 display = 0;
 
@@ -31,6 +31,7 @@ end
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
 
 pointCloud = convertCellListToMat("./pointclouds/" + fileNames(1));
+nextPointCloud = convertCellListToMat("./pointclouds/" + fileNames(2));
 
 % pointCloud = readmatrix("./pointclouds/" + fileNames(1));
 
@@ -39,6 +40,11 @@ displayPlotSize = max(pointCloud, [],'all') * 1.2;
 boidsNum = size(pointCloud,1);
 
 boidsDispatched = 0;
+
+slowdownPtCld = 2;
+slowdownStep = 500;
+slowdownID = 20;
+slowdownSpeedChange = 2;
 
 if display
     % Iniialize the boids with coordinate, and velocity.
@@ -88,6 +94,13 @@ for iterate = 1 : iterations
 
 %         pointCloud = readmatrix("./pointclouds/" + fileNames(ptCld));
         pointCloud = convertCellListToMat("./pointclouds/" + fileNames(ptCld));
+        
+        if ptCld < length(fileNames)
+            nextPointCloud = convertCellListToMat("./pointclouds/" + fileNames(ptCld + 1));
+        else
+            nextPointCloud = zeros(boidsNum,3);
+        end
+
         step = 0;
         arrivedInfo = zeros(boidsNum,3);
 
@@ -101,6 +114,16 @@ for iterate = 1 : iterations
 
         if boidsDispatched == boidsNum
             for i = 1 : boidsNumRequired
+                if ptCld == slowdownPtCld + 1 && i == slowdownID
+                    if abs(norm(boids(slowdownID).position - boids(slowdownID).target)) < illuminationCellRadius
+                        boids(slowdownID).arrived = true;
+                        boids(slowdownID).speed = 0;
+                        arrivedNum = arrivedNum + 1;
+                        arrived(i) = 1;
+                        arrivedInfo(slowdownID,:) = [step, boids(slowdownID).distTraveled, (boids(slowdownID).distTraveled)/step];
+                    end
+                    continue;
+                end
                 if boids(i).removed
                     arrived(i) = 1;
                     arrivedNum = arrivedNum + 1;
@@ -111,6 +134,7 @@ for iterate = 1 : iterations
                 boids(i).startPt = boids(i).position;
                 boids(i).arrived = false;
                 boids(i).distTraveled = 0;
+                boids(i).maxSpeed = maxSpeed;
             end
 
             for i = boidsNumRequired + 1 : boidsNum
@@ -136,13 +160,6 @@ for iterate = 1 : iterations
         while ~all(arrived)
 
             step = step + 1;
-            if ptCld == 3 && step == 373
-                pause(1);
-            end
-%             if step > 100
-%                 disp(boids(89).direction);
-%                 disp(boids(89).speed);
-%             end
 
             % at beginning, generate FLSs from dispatcher
             if boidsDispatched < boidsNum && ~mod(step-1, 1/launchPerSec/timeunit)
@@ -212,16 +229,7 @@ for iterate = 1 : iterations
                     continue;
                 end
 
-                [boids(i), avoidingType, positionType, cantAvoid] = boids(i).planMove(boids);
-                if cantAvoid
-                    arrived(i) = 1;
-                    boids(i).arrived = true;
-                    boids(i).speed = 0;
-                    arrivedNum = arrivedNum + 1;
-
-                    arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
-                    continue;
-                end
+                [boids(i), avoidingType, positionType] = boids(i).planMove(boids);
 
                 if avoidingType == 1
                     twoColliding = twoColliding + 1; 
@@ -246,9 +254,15 @@ for iterate = 1 : iterations
 
 
                 lastStepPos(i,:) = boids(i).position;
-
-                boids(i) = boids(i).makeMove();
-
+                if ptCld ~= slowdownPtCld || step ~= slowdownStep || i ~= slowdownID
+                    boids(i) = boids(i).makeMove();
+                else
+                    boids(i).speed = boids(i).calculateSpeed();
+                    boids(i).position = boids(i).position + boids(i).getVelocity() * boids(i).timeUnit;
+                    boids(i).distTraveled = boids(i).distTraveled + (boids(i).speed - slwodownSpeedChange) * boids(i).timeUnit;
+                    boids(i).target = nextPointCloud(i,:);
+                    arrived(i) = 1;
+                end
 
                 speeds(i,1) = max(speeds(i,1), boids(i).speed);
 
@@ -328,6 +342,9 @@ for iterate = 1 : iterations
         stepsForPtCld = [stepsForPtCld, step];
 
         for i = 1 : boidsNum
+            if ptCld == slowdownPtCld && i == slowdownID
+                continue;
+            end
             distPerPtCld(i,:) = [boids(i).distTraveled];
         end
 
@@ -360,18 +377,18 @@ for iterate = 1 : iterations
 
         timeSpent = arrivedInfo(:, 1);
 
-        renderInfo = [renderInfo,max(timeSpent), mean(timeSpent), min(timeSpent),...
+        renderInfo = [renderInfo,max(timeSpent(timeSpent~=0)), mean(timeSpent(timeSpent~=0)), min(timeSpent),...
             max(speeds(:,1)), mean(speeds(:,2)), min(speeds(:,3)), ...
             max(distPerPtCld), mean(distPerPtCld), min(distPerPtCld)];
     end
 end
 pause(0.01);
-writematrix(renderInfo, "renderInfo_90.xlsx", 'Sheet', ratioNum);
+writematrix(renderInfo, "renderInfo_500_Misplaced_1.xlsx", 'Sheet', ratioNum);
 % writematrix(distance, "distanceTraveled_90.xlsx", 'Sheet', ratioNum);
 
 % writematrix(recoverAvoidance, "recoverFromAvoidance_90.xlsx", 'Sheet', ratioNum);
 % writematrix(positionTypes, "positionTypes_90.xlsx", 'Sheet', ratioNum);
-writematrix(exchangeInfo, "exchangeInfo_90.xlsx", 'Sheet', ratioNum);
+writematrix(exchangeInfo, "exchangeInfo_500_Misplaced_1.xlsx", 'Sheet', ratioNum);
 
 end
 

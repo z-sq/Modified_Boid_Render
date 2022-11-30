@@ -37,10 +37,11 @@ classdef Boid
             obj.radioRange = radioRange;
         end
 
-        function [obj, avoidingType, positiontype] = planMove(obj, boids)
+        function [obj, avoidingType, positiontype, cantAvoid] = planMove(obj, boids)
 
             avoidingType = 0;
             positiontype = 0;
+            cantAvoid = 0;
 
             % try to go to target
             obj = obj.goToTarget();
@@ -51,7 +52,7 @@ classdef Boid
             % if there are collisions, start avoiding
             collisions = obj.checkCollision(boids);
             if collisions
-                [obj, avoidingType, positiontype] = obj.avoidCollisions(boids, collisions);
+                [obj, avoidingType, positiontype, cantAvoid] = obj.avoidCollisions(boids, collisions);
             end
         end
 
@@ -62,9 +63,10 @@ classdef Boid
         end
         
         %   Rule 1: Avoid Collisions
-        function [obj, avoidingType, positionChosedType] = avoidCollisions(obj,boids, collisions)
+        function [obj, avoidingType, positionChosedType, cantAvoid] = avoidCollisions(obj,boids, collisions)
             avoidingType = 0;
             positionChosedType = 0;
+            cantAvoid = 0;
             
             % Only 2 Boids colliding
             if size(collisions,1) == 1
@@ -79,7 +81,7 @@ classdef Boid
                 i = 0;
                 while stillColliding
                     i = i + 1;
-                    if ~any(positionChoose)
+                    if positionChoose(i,1:3) == obj.position
                         continue;
                     end
 
@@ -88,7 +90,12 @@ classdef Boid
                     boids(obj.ID).direction = obj.direction;
 
                     recheckCollisions =  obj.checkCollision(boids);
-
+                    
+%                     if i > 50
+%                         obj.arrived = true;
+%                         cantAvoid = true;
+%                         return;
+%                     end
                     % if no collisions, quit; if still collisions, add the
                     % place and
                     if size(recheckCollisions,1) == 0
