@@ -19,13 +19,13 @@ timeunit = 1/5;
 checkSteps = (maxSpeed/maxAcc)/timeunit;
 dispCellRadius = 0.2;
 % illumiToDispCellRatio = 5;
-launchPerSec = 12.5;
+launchPerSec = 6;
 radioRange = 10;
 
 checkIllumCells = 1.5;
 
 if illumiToDispCellRatio * checkIllumCells * dispCellRadius <= 3 * maxSpeed * timeunit 
-    checkIllumCells = 3;
+    checkIllumCells = 3.5;
 end
 
 illuminationCellRadius = dispCellRadius * illumiToDispCellRatio;
@@ -152,11 +152,11 @@ for iterate = 1 : iterations
                     if newBoidID > boidsNum
                         break;
                     end
-                    boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange);
+                    boids(newBoidID) = Boid(newBoidID, dispatcherPos(dispatcher,:), maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange, illuminationCellRadius);
                     boids(newBoidID).target = pointCloud(newBoidID,:);
                     boids(newBoidID).startPt = [-100, -100, -100];
                     boids(newBoidID).speed = 0;
-                    boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos(dispatcher,:))/norm(boids(newBoidID).target - dispatcherPos(dispatcher,:));
+%                     boids(newBoidID).direction = (boids(newBoidID).target - dispatcherPos(dispatcher,:))/norm(boids(newBoidID).target - dispatcherPos(dispatcher,:));
                     lastTimeGoToTarget(newBoidID) = step - 1;
                     boidsDispatched = boidsDispatched + 1;
                 end
@@ -192,7 +192,6 @@ for iterate = 1 : iterations
 
                             arrived(j) = false;
                             boids(j).arrived = false;
-                            boids(j).speed = boids(j).calculateSpeed();
                             arrivedNum = arrivedNum - 1;
 
                             exchangeTriggered = exchangeTriggered + 1;
@@ -247,8 +246,13 @@ for iterate = 1 : iterations
 
                 lastStepPos(i,:) = boids(i).position;
 
-                boids(i) = boids(i).makeMove();
-
+                [boids(i), arrivedSignal] = boids(i).makeMove();
+                if arrivedSignal
+                    arrived(i) = 1;
+                    arrivedNum = arrivedNum + 1;
+                    arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
+%                
+                end
 
                 speeds(i,1) = max(speeds(i,1), boids(i).speed);
 
@@ -260,14 +264,14 @@ for iterate = 1 : iterations
 
 
                 % Check if arrived illumination cell
-                if abs(norm(boids(i).position - boids(i).target)) < illuminationCellRadius && ~arrived(i)
-                    arrived(i) = 1;
-                    boids(i).arrived = true;
-                    boids(i).speed = 0;
-                    arrivedNum = arrivedNum + 1;
-
-                    arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
-                end
+%                 if abs(norm(boids(i).position - boids(i).target)) < illuminationCellRadius && ~arrived(i)
+%                     arrived(i) = 1;
+%                     boids(i).arrived = true;
+%                     boids(i).speed = 0;
+%                     arrivedNum = arrivedNum + 1;
+% 
+%                     arrivedInfo(i,:) = [step, boids(i).distTraveled, (boids(i).distTraveled)/step];
+%                 end
 
                 % check if arrived at center of illumination cell
 %                 if abs(norm(boids(i).position - boids(i).target)) < dispCellRadius

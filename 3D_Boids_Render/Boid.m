@@ -8,11 +8,13 @@ classdef Boid
         maxAcc = 5;
         direction = [0, 0, 0];
         speed = 0;
+        acc = 0;
         checkSteps = 0;
         position = [0, 0, 0];
         startPt = [0, 0, 0];
         timeUnit = 0;
         dispCellRadius = 0;
+        illumCellRadius = 0;
         avoidAngel = pi/4;
         target = [0, 0, 0];
         arrived = false;
@@ -20,10 +22,11 @@ classdef Boid
         distTraveled = 0;
         radioRange = 0;
         goDark = false;
+        plan;
     end
     
     methods
-        function obj = Boid(ID, initialPosition, maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange)
+        function obj = Boid(ID, initialPosition, maxSpeed, maxAcc, checkSteps, timeunit, dispCellRadius, radioRange, illumCellRadius)
             %BOID Construct an instance of this class
             %   Detailed explanation goes here
             obj.ID = ID;
@@ -35,31 +38,42 @@ classdef Boid
             obj.timeUnit = timeunit;
             obj.dispCellRadius = dispCellRadius;
             obj.radioRange = radioRange;
+            obj.plan = zeros(checkSteps, 6);
+            obj.illumCellRadius = illumCellRadius;
         end
 
-        function [obj, avoidingType, positiontype, cantAvoid] = planMove(obj, boids)
+        function [obj, avoidingType, positiontype, cantAvoid] = planMove(obj, boids, initial)
 
             avoidingType = 0;
             positiontype = 0;
             cantAvoid = 0;
 
             % try to go to target
-            obj = obj.goToTarget();
+            [obj, needRePlan] = obj.goToTarget();
 
             % update direction change to boids
             boids(obj.ID) = obj;
 
+
+            [obj, collisions] = obj.checkCollision(boids, needRePlan);
+            
+
             % if there are collisions, start avoiding
-            collisions = obj.checkCollision(boids);
             if collisions
                 [obj, avoidingType, positiontype, cantAvoid] = obj.avoidCollisions(boids, collisions);
             end
         end
+    
+        function [obj, arrived] = makeMove(obj)
+            obj.speed = obj.plan(1,5);
+            obj.acc = obj.plan(1,6);
 
-        function obj = makeMove(obj)
-            obj.speed = obj.calculateSpeed();
-            obj.position = obj.position + obj.getVelocity() * obj.timeUnit;
-            obj.distTraveled = obj.distTraveled + obj.speed * obj.timeUnit;
+            distMoveInStep = (obj.speed * obj.timeUnit + 0.5 * obj.acc * obj.timeUnit^2);
+            obj.position = obj.plan(1,1:3) + distMoveInStep*obj.direction;
+
+            obj.distTraveled = obj.distTraveled + distMoveInStep;
+            obj.arrived = obj.plan(1,4);
+            arrived = obj.arrived;
         end
         
         %   Rule 1: Avoid Collisions
@@ -89,7 +103,7 @@ classdef Boid
                     positionChosedType = positionChoose(i,4);
                     boids(obj.ID).direction = obj.direction;
 
-                    recheckCollisions =  obj.checkCollision(boids);
+                    [obj, recheckCollisions] =  obj.checkCollision(boids,true);
                     
 %                     if i > 50
 %                         obj.arrived = true;
@@ -140,8 +154,13 @@ classdef Boid
         end
 
         % Rule 2: go To Target
-        function obj = goToTarget(obj)
-            obj.direction = (obj.target - obj.position)/norm(obj.target - obj.position);
+        function [obj, needRePlan] = goToTarget(obj)
+            needRePlan = false;
+            towardTarget = (obj.target - obj.position)/norm(obj.target - obj.position);
+            if obj.direction ~= towardTarget
+                obj.direction = towardTarget;
+                needRePlan = true;
+            end
             if norm(obj.target - obj.position) == 0
                 obj.direction = [0,0,0];
             end
@@ -150,28 +169,44 @@ classdef Boid
 
 
         %   This method is used to check collision with other boids
-        function collisions = checkCollision(obj, boids)
+        function [obj,collisions] = checkCollision(obj, boids, needRePlan)
 
             collisions = [];
             collidingTimes = 0;
 
-            posAtStep = zeros(length(boids), 3);
+            posAtStep = zeros(length(boids), 4, obj.checkSteps);
+
             % load the position of all boids
             for i = 1 : length(boids)
-                posAtStep(i,:) = boids(i).position;
+                posAtStep(i,:,:) = boids(i).plan(:, 1:4).';
 %                 fprintf("Drone %d at [%.2f, %.2f]\n", i, posAtStep(i, :));
             end
 
-            for step = 1 : obj.checkSteps
-                % update the position
-                for i = 1 : length(boids)
-                    posAtStep(i, :) = posAtStep(i,:) + boids(i).getVelocity() * boids(i).timeUnit;
-                        
-%                     fprintf("Drone %d predict after step %d at [%.2f, %.2f]\n", i, step, posAtStep(i, :));
+            % move one step ahead
+            obj.plan = [obj.plan(2:end,:); zeros(1,6)];
 
+            for step = 1 : obj.checkSteps
+                if ~needRePlan
+                    step = obj.checkSteps;
+                end
+                if step == 1
+                    obj.plan(step,1:3) = obj.position + (obj.speed * obj.timeUnit + 0.5 * obj.acc * obj.timeUnit^2)*obj.direction;
+                    obj.plan(step, 5) = obj.speed + obj.acc * obj.timeUnit;
+                    obj.plan(step, 6) = obj.calculateAcc(obj.plan(step,1:5));
+                elseif obj.plan(step - 1, 4)
+                    obj.plan(step,:) = obj.plan(step-1,:); 
+                else
+                    obj.plan(step,1:3) = obj.plan(step - 1,1:3) + (obj.plan(step - 1,5) * obj.timeUnit + 0.5 *  obj.plan(step - 1,6) * obj.timeUnit^2) * obj.direction;
+                    obj.plan(step, 5) = obj.plan(step-1, 5) + obj.plan(step-1, 6) * obj.timeUnit;
+                    obj.plan(step, 6) = obj.calculateAcc(obj.plan(step,1:5));
                 end
 
-                for i = 1 : length(boids)
+                if abs(norm(obj.plan(step,1:3) - obj.target)) < obj.illumCellRadius
+                    obj.plan(step, 4) = 1;
+                    obj.plan(step, 5:6) = [0,0];
+                end
+                % update the position
+                 for i = 1 : length(boids)
                     if i == obj.ID
                         continue;
                     end
@@ -181,9 +216,9 @@ classdef Boid
                     % if a close boid hasn't been record, and has not
                     % arrived, mark it
 
-                    if ~boids(i).arrived && ...
-                            obj.dispCellRadius > abs(norm(posAtStep(obj.ID, :) - posAtStep(i, :)))
-                        collisions = [collisions; i, step, posAtStep(obj.ID, :)];
+                    if ~posAtStep(i,4,step) && ...
+                            obj.dispCellRadius > abs(norm(obj.plan(step,1:3) - posAtStep(i, 1:3, step)))
+                        collisions = [collisions; i, step, obj.plan(step,1:3)];
                         collidingTimes = collidingTimes + 1;
                     end
 
@@ -206,14 +241,16 @@ classdef Boid
         end
 
         % apply the speed model of APF
-        function speed = calculateSpeed(obj)
-            distToStart = abs(norm(obj.position - obj.startPt));
-            distToTarget = abs(norm(obj.position - obj.target));
-            l = min(distToTarget,distToStart) * obj.timeUnit;
-            l = max(l, 0.5 * obj.maxAcc * obj.timeUnit^2);
-            speed = (l/obj.timeUnit)/2 - obj.speed;
-            speed = min(speed,obj.maxSpeed);
-            speed = max(speed, obj.maxAcc * obj.timeUnit);
+        function acc = calculateAcc(obj, planOfStep)
+            acc = 0;
+            distToTarget = abs(norm(planOfStep(1:3) - obj.target));
+            distToSlow = 0.5 * ((planOfStep(5)^2)/obj.maxAcc);
+
+            if distToTarget < distToSlow + planOfStep(5) * obj.timeUnit
+                acc = max((-planOfStep(5)^2)/(2*distToTarget), -planOfStep(5)/obj.timeUnit);
+            elseif planOfStep(5) < obj.maxSpeed
+                acc = min((obj.maxSpeed - planOfStep(5))/obj.timeUnit, obj.maxAcc);
+            end
         end
 
         
