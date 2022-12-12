@@ -209,7 +209,7 @@ classdef Boid
         function speed = calculateSpeed(obj)
             distToStart = abs(norm(obj.position - obj.startPt));
             distToTarget = abs(norm(obj.position - obj.target));
-            l = min(distToTarget,distToStart) * obj.timeUnit * 5;
+            l = min(distToTarget,distToStart) * obj.timeUnit;
             l = max(l, 0.5 * obj.maxAcc * obj.timeUnit^2);
             speed = (l/obj.timeUnit)/2 - obj.speed;
             speed = min(speed,obj.maxSpeed);
