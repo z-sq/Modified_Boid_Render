@@ -23,6 +23,7 @@ classdef Boid
         radioRange = 0;
         goDark = false;
         plan;
+        exchangingWith = -1;
     end
     
     methods
@@ -62,14 +63,18 @@ classdef Boid
             if collisions
                 [obj, avoidingType, positiontype, cantAvoid] = obj.avoidCollisions(boids, collisions);
             end
+
+            if obj.exchangingWith
+                obj.exchangingWith = -1;
+            end
         end
     
         function [obj, arrived] = makeMove(obj)
+            distMoveInStep = (obj.speed * obj.timeUnit + 0.5 * obj.acc * obj.timeUnit^2);
+            
             obj.speed = obj.plan(1,5);
             obj.acc = obj.plan(1,6);
-
-            distMoveInStep = (obj.speed * obj.timeUnit + 0.5 * obj.acc * obj.timeUnit^2);
-            obj.position = obj.plan(1,1:3) + distMoveInStep*obj.direction;
+            obj.position = obj.plan(1,1:3);
 
             obj.distTraveled = obj.distTraveled + distMoveInStep;
             obj.arrived = obj.plan(1,4);
@@ -157,7 +162,7 @@ classdef Boid
         function [obj, needRePlan] = goToTarget(obj)
             needRePlan = false;
             towardTarget = (obj.target - obj.position)/norm(obj.target - obj.position);
-            if obj.direction ~= towardTarget
+            if ~(all(abs(obj.direction(:)-towardTarget(:))<0.01))
                 obj.direction = towardTarget;
                 needRePlan = true;
             end
@@ -190,15 +195,18 @@ classdef Boid
                     step = obj.checkSteps;
                 end
                 if step == 1
+                    obj.acc = obj.calculateAcc([obj.position,0,obj.speed]);
                     obj.plan(step,1:3) = obj.position + (obj.speed * obj.timeUnit + 0.5 * obj.acc * obj.timeUnit^2)*obj.direction;
                     obj.plan(step, 5) = obj.speed + obj.acc * obj.timeUnit;
                     obj.plan(step, 6) = obj.calculateAcc(obj.plan(step,1:5));
+                    obj.plan(step, 4) = 0;
                 elseif obj.plan(step - 1, 4)
                     obj.plan(step,:) = obj.plan(step-1,:); 
                 else
                     obj.plan(step,1:3) = obj.plan(step - 1,1:3) + (obj.plan(step - 1,5) * obj.timeUnit + 0.5 *  obj.plan(step - 1,6) * obj.timeUnit^2) * obj.direction;
                     obj.plan(step, 5) = obj.plan(step-1, 5) + obj.plan(step-1, 6) * obj.timeUnit;
                     obj.plan(step, 6) = obj.calculateAcc(obj.plan(step,1:5));
+                    obj.plan(step, 4) = 0;
                 end
 
                 if abs(norm(obj.plan(step,1:3) - obj.target)) < obj.illumCellRadius
@@ -206,8 +214,9 @@ classdef Boid
                     obj.plan(step, 5:6) = [0,0];
                 end
                 % update the position
-                 for i = 1 : length(boids)
-                    if i == obj.ID
+%                  for i = 1 : length(boids)
+                 for i = 1 : obj.ID
+                    if i == obj.ID || i == obj.exchangingWith
                         continue;
                     end
 
@@ -248,6 +257,7 @@ classdef Boid
 
             if distToTarget < distToSlow + planOfStep(5) * obj.timeUnit
                 acc = max((-planOfStep(5)^2)/(2*distToTarget), -planOfStep(5)/obj.timeUnit);
+                acc = max(acc, -obj.maxAcc);
             elseif planOfStep(5) < obj.maxSpeed
                 acc = min((obj.maxSpeed - planOfStep(5))/obj.timeUnit, obj.maxAcc);
             end
