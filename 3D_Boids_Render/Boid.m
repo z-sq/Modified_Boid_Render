@@ -215,10 +215,18 @@ classdef Boid
                 end
                 % update the position
 %                  for i = 1 : length(boids)
-                 for i = 1 : obj.ID
+                 for i = 1 : size(boids,1)
                     if i == obj.ID || i == obj.exchangingWith
                         continue;
+                    elseif i > obj.ID
+                        if step == obj.checkSteps
+                            break;
+                        end
+                        checkstep = step + 1;
+                    else
+                        checkstep = step;
                     end
+
 
                     % check if other Boids has enter the display cell of
                     % current boid. If so, mark it
@@ -226,7 +234,7 @@ classdef Boid
                     % arrived, mark it
 
                     if ~posAtStep(i,4,step) && ...
-                            obj.dispCellRadius > abs(norm(obj.plan(step,1:3) - posAtStep(i, 1:3, step)))
+                            2 * obj.dispCellRadius > abs(norm(obj.plan(step,1:3) - posAtStep(i, 1:3, checkstep)))
                         collisions = [collisions; i, step, obj.plan(step,1:3)];
                         collidingTimes = collidingTimes + 1;
                     end
@@ -273,7 +281,7 @@ classdef Boid
 
             
             for i = 1 : length(direc)
-                newPos = position + direc(i, :);
+                newPos = position + 2 * obj.dispCellRadius * direc(i, :);
 
                 newDirection = (newPos - obj.position)/norm(newPos - obj.position);
 

@@ -18,7 +18,7 @@ maxAcc = 3;
 timeunit = 1/20;
 checkSteps = ((maxSpeed/maxAcc)/timeunit) + 1;
 % checkSteps = 1;
-dispCellRadius = 0.2;
+dispCellRadius = 0.1;
 % illumiToDispCellRatio = 5;
 launchPerSec = 6;
 radioRange = 10;
@@ -193,17 +193,14 @@ for iterate = 1 : iterations
                 end
 
                 for j = 1 : boidsDispatched
-                    
-                    if (step == 276 || step == 275 || step == 274) && i== 50 && j == 42
-                        pause(0.1);
-                    end
+                   
 
                     if ~boids(j).removed && boids(j).arrived
                         distToObstacle = norm(boids(i).position - boids(j).position);
                         clappingAngle = calculateClappingAngle((boids(j).position - boids(i).position), boids(i).direction);
                         if distToObstacle < radioRange && ...
                                 abs(clappingAngle) <= pi/2 && ...
-                                (sin(abs(clappingAngle)) * distToObstacle) < boids(i).dispCellRadius && ...
+                                (sin(abs(clappingAngle)) * distToObstacle) < 2 * boids(i).dispCellRadius && ...
                                 norm(boids(j).position - boids(i).position) < checkIllumCells * illuminationCellRadius
 
                             tmp = boids(i).target;
@@ -241,9 +238,6 @@ for iterate = 1 : iterations
                     lastTimeGoToTarget(i,1) = step;
                     
                     continue;
-                end
-                if step >= 273 && step <= 277 && i == 42
-                    pause(0.1);
                 end
 
                 [boids(i), avoidingType, positionType, cantAvoid] = boids(i).planMove(boids);
@@ -320,7 +314,7 @@ for iterate = 1 : iterations
                         continue;
                     end
 
-                    if abs(norm(boids(i).position - boids(j).position)) < dispCellRadius
+                    if abs(norm(boids(i).position - boids(j).position)) < 2 * dispCellRadius
                         
                         fprintf("Drone %d at [%.4f, %.4f, %.4f] collided with drone %d at [%.4f, %.4f, %.4f], reletive distance %f \n", i, boids(i).position, j, boids(j).position, norm(boids(i).position - boids(j).position));
                         totalCollisions = totalCollisions + 1;
